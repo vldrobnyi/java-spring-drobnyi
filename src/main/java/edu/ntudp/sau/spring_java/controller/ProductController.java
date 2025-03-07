@@ -39,6 +39,11 @@ public class ProductController {
                                                       @RequestParam(name = "productsLimit", defaultValue = "10") int productsLimit) {
 
         List<Product> products = rozetkaParser.parseProducts(search, pageLimit, productsLimit);
+
+        if (products == null || products.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+
         byte[] excelFile = excelService.generateSearchReport(search, products);
 
         HttpHeaders headers = new HttpHeaders();

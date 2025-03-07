@@ -59,7 +59,7 @@ public class RozetkaParser {
             System.out.println(maxPageNumber);
 
             List<Product> products = parseProductsPage(getPageUrl(search, page), productsLimit);
-
+            System.out.println("Finished page #" + page);
 
             while (page < maxPageNumber) {
                 page++;
@@ -70,7 +70,7 @@ public class RozetkaParser {
                 System.out.println("Time taken: " + (endTime - startTime));
 
                 if (parsedPageProducts == null || parsedPageProducts.isEmpty()) {
-                    break;
+                    continue;
                 }
 
                 products.addAll(parsedPageProducts);

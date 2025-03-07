@@ -22,11 +22,14 @@
                     <div id="searchHelp" class="form-text">Please be specific.</div>
                 </div>
                 <div class="mb-3">
-                    <label for="pageLimit" class="form-label">Products limit</label>
+                    <label for="pageLimit" class="form-label">Pages limit</label>
                     <input type="number" name="pageLimit" class="form-control" id="pageLimit" aria-describedby="searchHelp" min="1" value="1" required>
                 </div>
-                <button type="submit" class="btn btn-success">Download Excel</button>
+                <button id="reportButton" type="submit" class="btn btn-success">Download Excel</button>
             </form>
+        </div>
+        <div class="row text-danger mt-3" id="error" style="display: none; text-align: center;">
+            <h4>Parsing failed. Try again, please be more specific.</h4>
         </div>
     </div>
 </section>
@@ -50,6 +53,8 @@
     document.getElementById("excelForm").addEventListener("submit", function(event) {
         event.preventDefault();
         showPreloader();
+        document.getElementById("error").style.display = "none";
+        document.getElementById("reportButton").setAttribute("disabled", true);
 
         var formData = new FormData(this);
 
@@ -59,19 +64,27 @@
                 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             }
         })
-            .then(response => response.blob())
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(errMsg => {
+                        document.getElementById("preloader").style.display = "none";
+                        document.getElementById("error").style.display = "block";
+                        throw new Error(errMsg || `Server responded with ${response.status} - ${response.statusText}`);
+                    });
+                }
+                return response.blob();
+            })
             .then(blob => {
-                // Create a link element to trigger download
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
                 link.download = "products_report_" + Date.now() + ".xlsx";
                 link.click();
-
-                // Hide the preloader after download
-                document.getElementById("preloader").style.display = "none";
             })
             .catch(error => {
                 console.error("Error downloading the file:", error);
+            })
+            .finally(() => {
+                document.getElementById("reportButton").removeAttribute("disabled");
                 document.getElementById("preloader").style.display = "none";
             });
     });

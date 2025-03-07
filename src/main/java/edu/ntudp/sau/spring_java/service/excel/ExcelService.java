@@ -30,7 +30,7 @@ public class ExcelService implements ExcelReportGenerator {
         headerStyle = createHeaderCellStyle(workbook);
         linkStyle = createHyperlinkCellStyle(workbook);
 
-        Sheet sheet = workbook.createSheet(search);
+        Sheet sheet = workbook.createSheet("Search results");
 
         Row searchRow = sheet.createRow(0);
         createCell(searchRow, 0, "Search request:", headerStyle);
