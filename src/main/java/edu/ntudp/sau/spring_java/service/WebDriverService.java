@@ -3,9 +3,12 @@ package edu.ntudp.sau.spring_java.service;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import jakarta.annotation.PreDestroy;
 import lombok.Getter;
+import org.openqa.selenium.PageLoadStrategy;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -17,11 +20,12 @@ public class WebDriverService {
         WebDriverManager.chromedriver().setup();
 
         ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless"); // Run in the background
-        options.addArguments("--disable-gpu"); // Improve performance
-        options.addArguments("--disable-images"); // Improve performance
-        options.addArguments("--no-sandbox"); // Improve performance
-        options.addArguments("--window-size=1920,1080");
+        options.setPageLoadStrategy(PageLoadStrategy.NONE);
+        options.addArguments("--headless");
+        options.addArguments("--disable-gpu");
+        options.addArguments("--disable-images");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--window-size=1280,720");
 
         this.driver = new ChromeDriver(options);
     }

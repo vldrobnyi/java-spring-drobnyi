@@ -1,23 +1,26 @@
 package edu.ntudp.sau.spring_java.service;
 
 import edu.ntudp.sau.spring_java.model.Product;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.stereotype.Service;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.By;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.context.annotation.Scope;
 
 @Service
-public class ProductParser {
-    //private static final String ROZETKA_URL = "https://rozetka.com.ua/ua/search/?text=%s";
+@Scope(value = "request", proxyMode = ScopedProxyMode.TARGET_CLASS)
+public class RozetkaParser {
+    //private static final String ROZETKA_SEARCH_URL = "https://rozetka.com.ua/ua/search/?text=%s";
     private static final int RETRY_COUNT = 5;
     private boolean isCategoryPage = false;
     private String urlTemplate = "https://rozetka.com.ua/ua/search/?text=%s";
@@ -25,17 +28,19 @@ public class ProductParser {
     private final WebDriver driver;
 
     @Autowired
-    public ProductParser(WebDriverService webDriverService) {
+    public RozetkaParser(WebDriverService webDriverService) {
         this.driver = webDriverService.getDriver();
     }
 
-    public List<Product> parseProducts(String search, int pageLimit) {
+    public List<Product> parseProducts(String search, int pageLimit, int productsLimit) {
         try {
             search = search.replaceAll(" ", "%20");
 
             int page = 1;
-            String url = String.format(urlTemplate, search);
 
+            //urlTemplate = ROZETKA_SEARCH_URL;
+            //isCategoryPage = false;
+            String url = String.format(urlTemplate, search);
             driver.get(url);
 
             try {
@@ -52,13 +57,13 @@ public class ProductParser {
 
             System.out.println(maxPageNumber);
 
-            List<Product> products = parseProductsPage(getPageUrl(search, page));
+            List<Product> products = parseProductsPage(getPageUrl(search, page), productsLimit);
 
 
             while (page < maxPageNumber) {
                 page++;
                 long startTime = System.currentTimeMillis();
-                List<Product> parsedPageProducts = parseProductsPage(getPageUrl(search, page));
+                List<Product> parsedPageProducts = parseProductsPage(getPageUrl(search, page), productsLimit);
                 long endTime = System.currentTimeMillis();
 
                 System.out.println("Time taken: " + (endTime - startTime));
@@ -70,6 +75,8 @@ public class ProductParser {
                 products.addAll(parsedPageProducts);
                 System.out.println("Finished page #" + page);
             }
+
+            return products;
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -77,26 +84,44 @@ public class ProductParser {
         return null;
     }
 
-    private List<Product> parseProductsPage(String pageUrl) {
+    private List<Product> parseProductsPage(String pageUrl, int productsLimit) {
         driver.get(pageUrl);
 
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("section.content_type_catalog .goods-tile .goods-tile__content .product-link.goods-tile__heading a")));
 
-        List<WebElement> productLinks = driver.findElements(By.cssSelector("section.content_type_catalog .goods-tile .goods-tile__content .product-link.goods-tile__heading a"));
-        List<String> links = driver.findElements(By.cssSelector("section.content_type_catalog .goods-tile .goods-tile__content .product-link.goods-tile__heading a"))
-                .stream()
-                .map(e -> e.getAttribute("href"))
+        List<Product> products = driver.findElements(By.cssSelector("section.content_type_catalog .goods-tile"))
+                .parallelStream()
+                .map(tile -> {
+                    try {
+                        long id = Long.parseLong(tile.findElement(By.className("g-id")).getAttribute("textContent"));
+                        String name = tile.findElement(By.cssSelector(".goods-tile__title")).getText();
+                        String link = tile.findElement(By.cssSelector(".goods-tile__content .product-link.goods-tile__heading a")).getAttribute("href");
+                        String priceText = tile.findElement(By.cssSelector(".goods-tile__price-value")).getText();
+                        double price = Double.parseDouble(priceText.replaceAll("\\s", "").replace("₴", ""));
+
+                        String stockStatus = tile.findElements(By.cssSelector(".goods-tile__availability"))
+                                .stream()
+                                .findFirst()
+                                .map(WebElement::getText)
+                                .orElse("Unknown");
+
+                        return Product
+                                .builder()
+                                .id(id)
+                                .name(name)
+                                .link(link)
+                                .price(price)
+                                .stockStatus(stockStatus)
+                                .build();
+                    } catch (Exception e) {
+                        System.out.println("Skipping product due to missing elements.");
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        List<Product> products = new ArrayList<>();
-
-        for (String link : links) {
-            Product product = parseSingleProduct(link);
-            if (product != null) {
-                products.add(product);
-            }
-        }
         return products;
     }
 
