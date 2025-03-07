@@ -1,8 +1,6 @@
 package edu.ntudp.sau.spring_java.service;
 
 import edu.ntudp.sau.spring_java.model.Product;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -98,8 +96,7 @@ public class RozetkaParser {
                 .parallelStream()
                 .map(tile -> {
                     try {
-                        //long id = Long.parseLong(tile.findElement(By.className("g-id")).getAttribute("textContent"));
-                        long id = 1;
+                        long id = Long.parseLong(tile.findElement(By.className("g-id")).getAttribute("textContent"));
                         String name = tile.findElement(By.cssSelector(".goods-tile__title")).getText();
                         String link = tile.findElement(By.cssSelector(".goods-tile__content .product-link.goods-tile__heading a")).getAttribute("href");
                         String priceText = tile.findElement(By.cssSelector(".goods-tile__price-value")).getText();
