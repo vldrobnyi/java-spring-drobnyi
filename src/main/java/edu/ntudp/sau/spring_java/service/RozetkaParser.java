@@ -3,6 +3,7 @@ package edu.ntudp.sau.spring_java.service;
 import edu.ntudp.sau.spring_java.model.Product;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,19 +39,21 @@ public class RozetkaParser {
 
             int page = 1;
 
-            //urlTemplate = ROZETKA_SEARCH_URL;
-            //isCategoryPage = false;
             String url = String.format(urlTemplate, search);
             driver.get(url);
 
             try {
+                JavascriptExecutor js = (JavascriptExecutor) driver;
                 WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-                wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("section.content_type_catalog")));
+                wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
             } catch (Exception e) {
                 return null;
             }
 
             makeUrlTemplate(driver.getCurrentUrl());
+
+            System.out.println(getPageUrl(search,page));
+            System.out.println(driver.getCurrentUrl());
 
             System.out.println(getPageUrl(search, page));
             int maxPageNumber = Math.min(parseMaxPage(getPageUrl(search, page)), pageLimit);
@@ -87,14 +90,16 @@ public class RozetkaParser {
     private List<Product> parseProductsPage(String pageUrl, int productsLimit) {
         driver.get(pageUrl);
 
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("section.content_type_catalog .goods-tile .goods-tile__content .product-link.goods-tile__heading a")));
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
 
         List<Product> products = driver.findElements(By.cssSelector("section.content_type_catalog .goods-tile"))
                 .parallelStream()
                 .map(tile -> {
                     try {
-                        long id = Long.parseLong(tile.findElement(By.className("g-id")).getAttribute("textContent"));
+                        //long id = Long.parseLong(tile.findElement(By.className("g-id")).getAttribute("textContent"));
+                        long id = 1;
                         String name = tile.findElement(By.cssSelector(".goods-tile__title")).getText();
                         String link = tile.findElement(By.cssSelector(".goods-tile__content .product-link.goods-tile__heading a")).getAttribute("href");
                         String priceText = tile.findElement(By.cssSelector(".goods-tile__price-value")).getText();
@@ -115,6 +120,7 @@ public class RozetkaParser {
                                 .stockStatus(stockStatus)
                                 .build();
                     } catch (Exception e) {
+                        //e.printStackTrace();
                         System.out.println("Skipping product due to missing elements.");
                         return null;
                     }
@@ -176,8 +182,9 @@ public class RozetkaParser {
         driver.get(url);
         if (isCategoryPage) {
             try {
-                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
-                wait.until(ExpectedConditions.presenceOfElementLocated(By.className("paginator")));
+                JavascriptExecutor js = (JavascriptExecutor) driver;
+                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+                wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
 
                 List<WebElement> paginationList = driver.findElements(By.cssSelector("a.page"));
                 return Integer.parseInt(paginationList.getLast().getText());
@@ -186,8 +193,9 @@ public class RozetkaParser {
             }
         } else {
             try {
-                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
-                wait.until(ExpectedConditions.presenceOfElementLocated(By.className("pagination__item")));
+                JavascriptExecutor js = (JavascriptExecutor) driver;
+                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+                wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
 
                 List<WebElement> paginationList = driver.findElements(By.className("pagination__item"));
                 return Integer.parseInt(paginationList.getLast().getText());
