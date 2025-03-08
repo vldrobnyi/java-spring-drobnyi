@@ -1,4 +1,4 @@
-package edu.ntudp.sau.spring_java.model;
+package edu.ntudp.sau.spring_java.model.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Product {
+public class ProductDto {
     private long id;
     private String name;
     private double price;

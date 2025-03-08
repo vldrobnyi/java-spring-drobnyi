@@ -1,9 +1,11 @@
 package edu.ntudp.sau.spring_java.service;
 
-import edu.ntudp.sau.spring_java.model.Product;
+import edu.ntudp.sau.spring_java.model.dto.ProductDto;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.stereotype.Service;
@@ -19,19 +21,20 @@ import org.springframework.context.annotation.Scope;
 @Service
 @Scope(value = "request", proxyMode = ScopedProxyMode.TARGET_CLASS)
 public class RozetkaParser {
-    //private static final String ROZETKA_SEARCH_URL = "https://rozetka.com.ua/ua/search/?text=%s";
     private static final int RETRY_COUNT = 5;
     private boolean isCategoryPage = false;
     private String urlTemplate = "https://rozetka.com.ua/ua/search/?text=%s";
 
     private final WebDriver driver;
 
+    private static final Logger logger = LoggerFactory.getLogger(RozetkaParser.class);
+
     @Autowired
     public RozetkaParser(WebDriverService webDriverService) {
         this.driver = webDriverService.getDriver();
     }
 
-    public List<Product> parseProducts(String search, int pageLimit, int productsLimit) {
+    public List<ProductDto> parseProducts(String search, int pageLimit) {
         try {
             search = search.replaceAll(" ", "%20");
 
@@ -50,34 +53,29 @@ public class RozetkaParser {
 
             makeUrlTemplate(driver.getCurrentUrl());
 
-            System.out.println(getPageUrl(search,page));
-            System.out.println(driver.getCurrentUrl());
+            logger.info("Parsing search request: {} for template: {}", search, urlTemplate);
 
-            System.out.println(getPageUrl(search, page));
             int maxPageNumber = Math.min(parseMaxPage(getPageUrl(search, page)), pageLimit);
 
-            System.out.println(maxPageNumber);
+            logger.info("Max page number: {}", maxPageNumber);
 
-            List<Product> products = parseProductsPage(getPageUrl(search, page), productsLimit);
-            System.out.println("Finished page #" + page);
+            List<ProductDto> productDtos = parseProductsPage(getPageUrl(search, page));
+            logger.info("Finished page #{}", page);
 
             while (page < maxPageNumber) {
                 page++;
-                long startTime = System.currentTimeMillis();
-                List<Product> parsedPageProducts = parseProductsPage(getPageUrl(search, page), productsLimit);
-                long endTime = System.currentTimeMillis();
 
-                System.out.println("Time taken: " + (endTime - startTime));
-
-                if (parsedPageProducts == null || parsedPageProducts.isEmpty()) {
+                List<ProductDto> parsedPageProductDtos = parseProductsPage(getPageUrl(search, page));
+                if (parsedPageProductDtos == null || parsedPageProductDtos.isEmpty()) {
+                    logger.warn("No products found for page #{}", page);
                     continue;
                 }
 
-                products.addAll(parsedPageProducts);
-                System.out.println("Finished page #" + page);
+                productDtos.addAll(parsedPageProductDtos);
+                logger.info("Finished page #{}", page);
             }
 
-            return products;
+            return productDtos;
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -85,14 +83,14 @@ public class RozetkaParser {
         return null;
     }
 
-    private List<Product> parseProductsPage(String pageUrl, int productsLimit) {
+    private List<ProductDto> parseProductsPage(String pageUrl) {
         driver.get(pageUrl);
 
         JavascriptExecutor js = (JavascriptExecutor) driver;
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
 
-        List<Product> products = driver.findElements(By.cssSelector("section.content_type_catalog .goods-tile"))
+        List<ProductDto> productDtos = driver.findElements(By.cssSelector("section.content_type_catalog .goods-tile"))
                 .parallelStream()
                 .map(tile -> {
                     try {
@@ -108,7 +106,7 @@ public class RozetkaParser {
                                 .map(WebElement::getText)
                                 .orElse("Unknown");
 
-                        return Product
+                        return ProductDto
                                 .builder()
                                 .id(id)
                                 .name(name)
@@ -117,18 +115,17 @@ public class RozetkaParser {
                                 .stockStatus(stockStatus)
                                 .build();
                     } catch (Exception e) {
-                        //e.printStackTrace();
-                        System.out.println("Skipping product due to missing elements.");
+                        logger.error("Could not parse product: {}", e.getMessage());
                         return null;
                     }
                 })
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        return products;
+        return productDtos;
     }
 
-    private Product parseSingleProduct(String productUrl) {
+    private ProductDto parseSingleProduct(String productUrl) {
         System.out.println("Now parsing: " + productUrl);
 
         driver.get(productUrl);
@@ -155,7 +152,7 @@ public class RozetkaParser {
                 double price = Double.parseDouble(driver.findElement(By.cssSelector(".product-about__right p.product-price__big")).getText().replaceAll("\\s", "").replace("₴", ""));
 
 
-                Product product = Product
+                ProductDto productDto = ProductDto
                         .builder()
                         .id(id)
                         .name(productName)
@@ -165,8 +162,8 @@ public class RozetkaParser {
                         .build();
 
 
-                System.out.println(product.toString());
-                return product;
+                System.out.println(productDto.toString());
+                return productDto;
             } catch (Exception e) {
                 System.out.println("Attempt " + i + " failed");
             }

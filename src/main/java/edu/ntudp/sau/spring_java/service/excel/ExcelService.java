@@ -1,6 +1,6 @@
 package edu.ntudp.sau.spring_java.service.excel;
 
-import edu.ntudp.sau.spring_java.model.Product;
+import edu.ntudp.sau.spring_java.model.dto.ProductDto;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFRichTextString;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -23,7 +23,7 @@ public class ExcelService implements ExcelReportGenerator {
     private CellStyle linkStyle;
 
     @Override
-    public byte[] generateSearchReport(String search, List<Product> products) {
+    public byte[] generateSearchReport(String search, List<ProductDto> productDtos) {
         Workbook workbook = new XSSFWorkbook();
 
         borderedStyle = createBorderedCellStyle(workbook);
@@ -49,9 +49,9 @@ public class ExcelService implements ExcelReportGenerator {
         createCell(headerRow, 3, "Stock", headerStyle);
         createCell(headerRow, 4, "Link", headerStyle);
 
-        for (int i = 0; i < products.size(); i++) {
+        for (int i = 0; i < productDtos.size(); i++) {
             Row dataRow = sheet.createRow(i + 4);
-            addProductData(workbook, dataRow, products.get(i));
+            addProductData(workbook, dataRow, productDtos.get(i));
         }
 
         for (int i = 0; i < 5; i++) {
@@ -75,15 +75,15 @@ public class ExcelService implements ExcelReportGenerator {
         cell.setCellStyle(style);
     }
 
-    private void addProductData(Workbook workbook, Row row, Product product) {
-        createCell(row, 0, String.valueOf(product.getId()), borderedStyle);
-        createCell(row, 1, product.getName(), borderedStyle);
-        createCell(row, 2, String.valueOf(product.getPrice()), borderedStyle);
-        createCell(row, 3, product.getStockStatus(), borderedStyle);
+    private void addProductData(Workbook workbook, Row row, ProductDto productDto) {
+        createCell(row, 0, String.valueOf(productDto.getId()), borderedStyle);
+        createCell(row, 1, productDto.getName(), borderedStyle);
+        createCell(row, 2, String.valueOf(productDto.getPrice()), borderedStyle);
+        createCell(row, 3, productDto.getStockStatus(), borderedStyle);
 
         Cell linkCell = row.createCell(4);
         Hyperlink hyperlink = workbook.getCreationHelper().createHyperlink(HyperlinkType.URL);
-        hyperlink.setAddress(product.getLink());
+        hyperlink.setAddress(productDto.getLink());
 
         XSSFRichTextString richText = new XSSFRichTextString("Link");
         linkCell.setCellValue(richText);

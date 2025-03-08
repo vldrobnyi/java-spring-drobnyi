@@ -1,6 +1,6 @@
 package edu.ntudp.sau.spring_java.controller;
 
-import edu.ntudp.sau.spring_java.model.Product;
+import edu.ntudp.sau.spring_java.model.dto.ProductDto;
 import edu.ntudp.sau.spring_java.service.RozetkaParser;
 import edu.ntudp.sau.spring_java.service.excel.ExcelService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,10 +24,9 @@ public class ProductController {
     @GetMapping("/products")
     public String parseProducts(@RequestParam(name = "search") String search,
                                 @RequestParam(name = "pageLimit", defaultValue = "1") int pageLimit,
-                                @RequestParam(name = "productsLimit", defaultValue = "10") int productsLimit,
                                 Model model) {
 
-        List<Product> products = rozetkaParser.parseProducts(search, pageLimit, productsLimit);
+        List<ProductDto> products = rozetkaParser.parseProducts(search, pageLimit);
         model.addAttribute("products", products);
 
         return "products";
@@ -35,16 +34,15 @@ public class ProductController {
 
     @GetMapping("/products/excel")
     public ResponseEntity<byte[]> generateExcelReport(@RequestParam(name = "search") String search,
-                                                      @RequestParam(name = "pageLimit", defaultValue = "1") int pageLimit,
-                                                      @RequestParam(name = "productsLimit", defaultValue = "10") int productsLimit) {
+                                                      @RequestParam(name = "pageLimit", defaultValue = "1") int pageLimit) {
 
-        List<Product> products = rozetkaParser.parseProducts(search, pageLimit, productsLimit);
+        List<ProductDto> productDtos = rozetkaParser.parseProducts(search, pageLimit);
 
-        if (products == null || products.isEmpty()) {
+        if (productDtos == null || productDtos.isEmpty()) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
-        byte[] excelFile = excelService.generateSearchReport(search, products);
+        byte[] excelFile = excelService.generateSearchReport(search, productDtos);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
