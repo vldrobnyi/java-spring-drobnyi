@@ -27,6 +27,7 @@
                     <label for="pageLimit" class="form-label">Pages limit</label>
                     <input type="number" name="pageLimit" class="form-control" id="pageLimit" aria-describedby="searchHelp" min="1" value="1" required>
                 </div>
+                <button id="productListLink" type="submit" class="btn btn-primary">Fetch products</button>
                 <button id="reportButton" type="submit" class="btn btn-success">Download Excel</button>
             </form>
         </div>
@@ -60,7 +61,7 @@
 
         var formData = new FormData(this);
 
-        fetch('/products/excel?' + new URLSearchParams(formData), {
+        fetch('/product/excel?' + new URLSearchParams(formData), {
             method: 'GET',
             headers: {
                 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -94,6 +95,17 @@
     function showPreloader() {
         document.getElementById("preloader").style.display = "block";
     }
+
+    document.getElementById("productListLink").addEventListener("click", function(event) {
+        event.preventDefault();
+
+        var search = document.getElementById("searchInput").value;
+        var pageLimit = document.getElementById("pageLimit").value;
+
+        var productListUrl = "/product?search=" + encodeURIComponent(search) + "&pageLimit=" + encodeURIComponent(pageLimit);
+
+        window.location.href = productListUrl;
+    });
 </script>
 </body>
 </html>

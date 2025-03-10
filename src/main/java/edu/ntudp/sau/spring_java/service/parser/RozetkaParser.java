@@ -1,8 +1,9 @@
-package edu.ntudp.sau.spring_java.service;
+package edu.ntudp.sau.spring_java.service.parser;
 
 import edu.ntudp.sau.spring_java.model.dto.ProductDto;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,7 @@ import org.openqa.selenium.By;
 import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
+
 import org.springframework.context.annotation.Scope;
 
 @Service
@@ -36,7 +38,7 @@ public class RozetkaParser {
 
     public List<ProductDto> parseProducts(String search, int pageLimit) {
         try {
-            search = search.replaceAll(" ", "%20");
+            search = search.trim().replaceAll(" ", "%20");
 
             int page = 1;
 
@@ -48,6 +50,7 @@ public class RozetkaParser {
                 WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
                 wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
             } catch (Exception e) {
+                logger.error("Error during page load: {}", e.getMessage());
                 return null;
             }
 
@@ -63,6 +66,7 @@ public class RozetkaParser {
             logger.info("Finished page #{}", page);
 
             while (page < maxPageNumber) {
+                makeUrlTemplate(driver.getCurrentUrl());
                 page++;
 
                 List<ProductDto> parsedPageProductDtos = parseProductsPage(getPageUrl(search, page));
@@ -84,6 +88,7 @@ public class RozetkaParser {
     }
 
     private List<ProductDto> parseProductsPage(String pageUrl) {
+        logger.info("Parsing page url: {}", pageUrl);
         driver.get(pageUrl);
 
         JavascriptExecutor js = (JavascriptExecutor) driver;
@@ -91,12 +96,14 @@ public class RozetkaParser {
         wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
 
         List<ProductDto> productDtos = driver.findElements(By.cssSelector("section.content_type_catalog .goods-tile"))
-                .parallelStream()
+                .stream()
                 .map(tile -> {
                     try {
                         long id = Long.parseLong(tile.findElement(By.className("g-id")).getAttribute("textContent"));
                         String name = tile.findElement(By.cssSelector(".goods-tile__title")).getText();
                         String link = tile.findElement(By.cssSelector(".goods-tile__content .product-link.goods-tile__heading a")).getAttribute("href");
+
+
                         String priceText = tile.findElement(By.cssSelector(".goods-tile__price-value")).getText();
                         double price = Double.parseDouble(priceText.replaceAll("\\s", "").replace("₴", ""));
 
@@ -125,87 +132,48 @@ public class RozetkaParser {
         return productDtos;
     }
 
-    private ProductDto parseSingleProduct(String productUrl) {
-        System.out.println("Now parsing: " + productUrl);
-
-        driver.get(productUrl);
-
-        try {
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(3));
-            wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".product-about__right")));
-        } catch (Exception e) {
-            System.out.println("Invalid product page");
-            return null;
-        }
-
-        for (int i = 0; i < RETRY_COUNT; i++) {
-            try {
-                String ratingText = driver.findElement(By.cssSelector(".product-about__right div.rating.text-base span")).getText();
-                var idArray = ratingText.split("\\s");
-                long id = Long.parseLong(idArray[idArray.length - 1]);
-                String productName = driver.findElement(By.cssSelector(".product-about__right h1.title__font")).getText();
-                WebElement stockStatusElement = driver.findElements(By.cssSelector(".product-about__right p.status-label"))
-                        .stream()
-                        .findFirst()
-                        .orElse(null);
-                String stockStatus = (stockStatusElement != null) ? stockStatusElement.getText() : "Not Available";
-                double price = Double.parseDouble(driver.findElement(By.cssSelector(".product-about__right p.product-price__big")).getText().replaceAll("\\s", "").replace("₴", ""));
-
-
-                ProductDto productDto = ProductDto
-                        .builder()
-                        .id(id)
-                        .name(productName)
-                        .stockStatus(stockStatus)
-                        .price(price)
-                        .link(productUrl)
-                        .build();
-
-
-                System.out.println(productDto.toString());
-                return productDto;
-            } catch (Exception e) {
-                System.out.println("Attempt " + i + " failed");
-            }
-        }
-        System.out.println("Parsing failed");
-        return null;
-    }
-
     private int parseMaxPage(String url) {
         driver.get(url);
-        if (isCategoryPage) {
-            try {
-                JavascriptExecutor js = (JavascriptExecutor) driver;
-                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-                wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
-
-                List<WebElement> paginationList = driver.findElements(By.cssSelector("a.page"));
-                return Integer.parseInt(paginationList.getLast().getText());
-            } catch (Exception e) {
-                return 1;
-            }
-        } else {
-            try {
-                JavascriptExecutor js = (JavascriptExecutor) driver;
-                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-                wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
-
-                List<WebElement> paginationList = driver.findElements(By.className("pagination__item"));
-                return Integer.parseInt(paginationList.getLast().getText());
-            } catch (Exception e) {
-                return 1;
-            }
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
+        List<WebElement> searchPaginationList = driver.findElements(By.className("pagination__item"));
+        if (searchPaginationList != null && !searchPaginationList.isEmpty()) {
+            return Integer.parseInt(searchPaginationList.getLast().getText());
         }
+
+        List<WebElement> paginationList = driver.findElements(By.cssSelector("a.page"));
+
+        if (paginationList != null && !paginationList.isEmpty()) {
+            return Integer.parseInt(paginationList.getLast().getText());
+        }
+
+        return 1;
     }
 
     private void makeUrlTemplate(String currentUrl) {
+        logger.info(currentUrl);
+        if (currentUrl.contains("search") && urlTemplate.contains("search") && urlTemplate.contains("page=")) {
+            return;
+        }
+
         if (currentUrl.matches(".*/c\\d+/.*")) {
             List<String> urlList = new ArrayList<>(Arrays.asList(currentUrl.split("#")));
-            urlList.removeLast();
-            urlList.add("page=%d");
-            urlTemplate = String.join("", urlList);
-            isCategoryPage = true;
+            if (urlList.size() > 1) {
+                if (currentUrl.contains("preset=")) {
+                    urlList.removeLast();
+                    urlTemplate = String.join("", urlList);
+                    urlTemplate = urlTemplate.substring(0, urlTemplate.length() - 1) + ";page=%d";
+                } else {
+                    urlList.removeLast();
+                    urlList.add("page=%d");
+                    urlTemplate = String.join("", urlList);
+                }
+                isCategoryPage = true;
+            } else if (currentUrl.contains("page=")) {
+                urlTemplate = currentUrl.substring(0, currentUrl.length() - 2) + "%d";
+                isCategoryPage = true;
+            }
         } else {
             urlTemplate += "&page=%d";
         }
