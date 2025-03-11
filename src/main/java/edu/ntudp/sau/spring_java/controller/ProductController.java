@@ -56,6 +56,8 @@ public class ProductController {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
+        productService.saveProducts(productParsingDtos);
+
         byte[] excelFile = excelService.generateSearchReport(search, productParsingDtos);
 
         if (excelFile == null) {
