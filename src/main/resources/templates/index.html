@@ -63,15 +63,28 @@
         crossorigin="anonymous"></script>
 
 <script>
+
+    function disableButtons() {
+        document.getElementById("productListLink").setAttribute("disabled", true);
+        document.getElementById("reportButton").setAttribute("disabled", true);
+        document.getElementById("reportDbButton").setAttribute("disabled", true);
+    }
+
+    function enableButtons() {
+        document.getElementById("productListLink").removeAttribute("disabled");
+        document.getElementById("reportButton").removeAttribute("disabled");
+        document.getElementById("reportDbButton").removeAttribute("disabled");
+    }
+
     document.getElementById("reportButton").addEventListener("click", function (event) {
         event.preventDefault();
         document.getElementById("reportPreloader").style.display = "block";
         document.getElementById("error").style.display = "none";
-        document.getElementById("reportButton").setAttribute("disabled", true);
+        disableButtons();
 
-        var formData = new FormData(this);
-
-        fetch('/product/excel?' + new URLSearchParams(formData), {
+        var search = document.getElementById("searchInput").value;
+        var pageLimit = document.getElementById("pageLimit").value;
+        fetch('/product/excel?search=' +  search + '&pageLimit=' + pageLimit, {
             method: 'GET',
             headers: {
                 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -97,8 +110,8 @@
                 console.error("Error downloading the file:", error);
             })
             .finally(() => {
-                document.getElementById("reportButton").removeAttribute("disabled");
                 document.getElementById("reportPreloader").style.display = "none";
+                enableButtons()
             });
     });
 
@@ -106,7 +119,7 @@
         event.preventDefault();
         document.getElementById("reportPreloader").style.display = "block";
         document.getElementById("error").style.display = "none";
-        document.getElementById("reportDbButton").setAttribute("disabled", true);
+        disableButtons();
 
         fetch('/product/excel/db?', {
             method: 'GET',
@@ -134,14 +147,14 @@
                 console.error("Error downloading the file:", error);
             })
             .finally(() => {
-                document.getElementById("reportDbButton").removeAttribute("disabled");
                 document.getElementById("reportPreloader").style.display = "none";
+                enableButtons()
             });
     });
 
     document.getElementById("productListLink").addEventListener("click", function (event) {
         event.preventDefault();
-        document.getElementById("productListLink").setAttribute("disabled", true);
+        disableButtons();
         document.getElementById("fetchLoader").style.display = "block"
 
         var search = document.getElementById("searchInput").value;
