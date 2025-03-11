@@ -8,6 +8,6 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 @EntityScan(basePackages = "edu.ntudp.sau.spring_java.model.entity")
 public class SpringJavaApplication {
 	public static void main(String[] args) {
-		var context = SpringApplication.run(SpringJavaApplication.class, args);
+		SpringApplication.run(SpringJavaApplication.class, args);
 	}
 }
