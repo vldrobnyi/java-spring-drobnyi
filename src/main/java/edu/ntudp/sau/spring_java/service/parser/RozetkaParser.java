@@ -159,7 +159,18 @@ public class RozetkaParser implements Parser<ProductParsingDto> {
                 urlTemplate = currentUrl.substring(0, currentUrl.length() - 2) + "%d";
                 isCategoryPage = true;
             }
-        } else {
+        }
+        else if(currentUrl.contains("/producer/")) {
+            List<String> urlList = new ArrayList<>(Arrays.asList(currentUrl.split("#")));
+
+            if (urlList.size() > 1) {
+                urlList.removeLast();
+                urlTemplate = String.join("", urlList);
+                urlTemplate +="?page=%d";
+            }
+            isCategoryPage = true;
+        }
+        else {
             urlTemplate += "&page=%d";
         }
     }
