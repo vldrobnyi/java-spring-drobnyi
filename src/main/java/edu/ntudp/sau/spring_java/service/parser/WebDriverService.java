@@ -25,9 +25,6 @@ public class WebDriverService {
         ChromeOptions options = new ChromeOptions();
         options.setPageLoadStrategy(PageLoadStrategy.NONE);
         options.addArguments("--headless");
-        options.addArguments("--disable-gpu");
-        options.addArguments("--disable-images");
-        options.addArguments("--no-sandbox");
         options.addArguments("--window-size=1280,720");
 
         this.driver = new ChromeDriver(options);

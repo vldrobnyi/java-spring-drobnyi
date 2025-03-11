@@ -21,6 +21,7 @@ import org.springframework.context.annotation.Scope;
 @Service
 @Scope(value = "request", proxyMode = ScopedProxyMode.TARGET_CLASS)
 public class RozetkaParser implements Parser<ProductParsingDto> {
+    private static final int WAIT_DURATION = 3;
     private boolean isCategoryPage = false;
     private String urlTemplate = "https://rozetka.com.ua/ua/search/?text=%s";
 
@@ -44,7 +45,7 @@ public class RozetkaParser implements Parser<ProductParsingDto> {
 
             try {
                 JavascriptExecutor js = (JavascriptExecutor) driver;
-                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(WAIT_DURATION));
                 wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
             } catch (Exception e) {
                 logger.error("Error during page load: {}", e.getMessage());
@@ -89,7 +90,7 @@ public class RozetkaParser implements Parser<ProductParsingDto> {
         driver.get(pageUrl);
 
         JavascriptExecutor js = (JavascriptExecutor) driver;
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(WAIT_DURATION));
         wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
 
         List<ProductParsingDto> productParsingDtos = driver.findElements(By.cssSelector("section.content_type_catalog .goods-tile")).stream().map(tile -> {
@@ -119,7 +120,7 @@ public class RozetkaParser implements Parser<ProductParsingDto> {
     private int parseMaxPage(String url) {
         driver.get(url);
         JavascriptExecutor js = (JavascriptExecutor) driver;
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(WAIT_DURATION));
         wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
 
         List<WebElement> searchPaginationList = driver.findElements(By.className("pagination__item"));
@@ -138,7 +139,8 @@ public class RozetkaParser implements Parser<ProductParsingDto> {
     }
 
     private void makeUrlTemplate(String currentUrl) {
-        if (currentUrl.contains("search") && urlTemplate.contains("search") && urlTemplate.contains("page=")) {
+
+        if (!currentUrl.contains("#search_text") && urlTemplate.contains("search") && urlTemplate.contains("page=")) {
             return;
         }
 
