@@ -21,7 +21,7 @@ import org.springframework.context.annotation.Scope;
 @Service
 @Scope(value = "request", proxyMode = ScopedProxyMode.TARGET_CLASS)
 public class RozetkaParser implements Parser<ProductParsingDto> {
-    private static final int WAIT_DURATION = 3;
+    private static final int WAIT_DURATION = 10;
     private boolean isCategoryPage = false;
     private String urlTemplate = "https://rozetka.com.ua/ua/search/?text=%s";
 

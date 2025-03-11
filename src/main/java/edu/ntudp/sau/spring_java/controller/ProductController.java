@@ -56,9 +56,9 @@ public class ProductController {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
-        productService.saveProducts(productParsingDtos);
+        List<ProductResponseDto> productResponseDtos = productService.saveProducts(productParsingDtos);
 
-        byte[] excelFile = excelService.generateSearchReport(search, productParsingDtos);
+        byte[] excelFile = excelService.generateSearchReport(search, productResponseDtos);
 
         if (excelFile == null) {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);

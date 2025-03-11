@@ -6,6 +6,6 @@ import edu.ntudp.sau.spring_java.model.dto.product.ProductResponseDto;
 import java.util.List;
 
 public interface ExcelReportGenerator {
-    byte[] generateSearchReport(String search, List<ProductParsingDto> productParsingDtos);
+    byte[] generateSearchReport(String search, List<ProductResponseDto> productReposnseDtos);
     byte[] generateDatabaseReport(List<ProductResponseDto> productReposnseDtos);
 }
