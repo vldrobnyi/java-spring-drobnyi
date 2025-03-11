@@ -1,7 +1,8 @@
 package edu.ntudp.sau.spring_java.service;
 
-import edu.ntudp.sau.spring_java.model.dto.CurrencyDto;
-import edu.ntudp.sau.spring_java.model.dto.ProductDto;
+import edu.ntudp.sau.spring_java.model.dto.currency.CurrencyDto;
+import edu.ntudp.sau.spring_java.model.dto.product.ProductParsingDto;
+import edu.ntudp.sau.spring_java.model.dto.product.ProductResponseDto;
 import edu.ntudp.sau.spring_java.model.entity.Product;
 import edu.ntudp.sau.spring_java.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,54 +10,46 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductService {
     private final ProductRepository productRepository;
-    private final BankService bankService;
+    private final CurrencyService currencyService;
 
     @Autowired
-    public ProductService(ProductRepository productRepository, BankService bankService) {
+    public ProductService(ProductRepository productRepository, CurrencyService currencyService) {
         this.productRepository = productRepository;
-        this.bankService = bankService;
+        this.currencyService = currencyService;
     }
 
-    public List<Product> saveOrUpdateProducts(List<ProductDto> productDtos) {
-        List<CurrencyDto> currencies = bankService.getCurrencyRate()
+    public List<ProductResponseDto> saveProducts(List<ProductParsingDto> productParsingDtos) {
+        List<CurrencyDto> currencies = currencyService.getCurrencyRate()
                 .block();
 
         if (currencies == null || currencies.isEmpty()) {
             throw new RuntimeException("Currency data is unavailable.");
         }
 
-        List<Product> savedProducts = new ArrayList<>();
+        List<ProductResponseDto> savedProducts = new ArrayList<>();
 
-        for (ProductDto productDto : productDtos) {
-            Optional<Product> existingProductOpt = productRepository.findById(productDto.getId());
+        for (ProductParsingDto productParsingDto : productParsingDtos) {
+            Optional<Product> existingProductOpt = productRepository.findById(productParsingDto.getId());
             Product product;
 
             if (existingProductOpt.isPresent()) {
                 product = existingProductOpt.get();
-                product.setName(productDto.getName());
-                product.setPriceUah(productDto.getPrice());
-                product.setStockStatus(productDto.getStockStatus());
-                product.setLink(productDto.getLink());
-                product.setLastUpdateDateTime(LocalDateTime.now());
+                product.setName(productParsingDto.getName());
+                product.setPriceUah(productParsingDto.getPrice());
+                product.setStockStatus(productParsingDto.getStockStatus());
+                product.setLink(productParsingDto.getLink());
+                product.setLastUpdateDate(new Date());
             } else {
-                product = Product
-                        .builder()
-                        .id(productDto.getId())
-                        .priceUah(productDto.getPrice())
-                        .name(productDto.getName())
-                        .link(productDto.getLink())
-                        .stockStatus(productDto.getStockStatus())
-                        .additionDateTime(LocalDateTime.now())
-                        .lastUpdateDateTime(LocalDateTime.now())
-                        .build();
+                product = convertToEntity(productParsingDto);
             }
 
             CurrencyDto usdCurrency = currencies.stream()
@@ -81,10 +74,43 @@ public class ProductService {
                 product.setPriceEur(eurPrice.doubleValue());
             }
 
-            savedProducts.add(productRepository.save(product));
+            savedProducts.add(convertToResponseDto(productRepository.save(product)));
         }
 
         return savedProducts;
+    }
+
+    public List<ProductResponseDto> getAllProducts() {
+        List<Product> products = productRepository.findAll();
+        return products.stream()
+                .map(this::convertToResponseDto)
+                .collect(Collectors.toList());
+    }
+
+    private Product convertToEntity(ProductParsingDto productParsingDto) {
+        return Product
+                .builder()
+                .id(productParsingDto.getId())
+                .priceUah(productParsingDto.getPrice())
+                .name(productParsingDto.getName())
+                .link(productParsingDto.getLink())
+                .stockStatus(productParsingDto.getStockStatus())
+                .creationDate(new Date())
+                .lastUpdateDate(new Date())
+                .build();
+    }
+
+    private ProductResponseDto convertToResponseDto(Product product) {
+        return ProductResponseDto
+                .builder()
+                .id(product.getId())
+                .name(product.getName())
+                .priceUah(product.getPriceUah())
+                .priceUsd(product.getPriceUsd())
+                .priceEur(product.getPriceEur())
+                .stockStatus(product.getStockStatus())
+                .link(product.getLink())
+                .build();
     }
 }
 

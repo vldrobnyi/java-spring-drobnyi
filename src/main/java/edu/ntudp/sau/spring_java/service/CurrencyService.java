@@ -1,6 +1,7 @@
 package edu.ntudp.sau.spring_java.service;
 
-import edu.ntudp.sau.spring_java.model.dto.CurrencyDto;
+import edu.ntudp.sau.spring_java.model.dto.currency.CurrencyDto;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -8,10 +9,10 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 
 @Service
-public class BankService {
+public class CurrencyService {
     private final WebClient webClient;
 
-    public BankService(WebClient webClient) {
+    public CurrencyService(@Qualifier("currencyWebClient") WebClient webClient) {
         this.webClient = webClient;
     }
 

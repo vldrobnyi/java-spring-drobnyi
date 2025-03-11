@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Getter
-@Scope(value = "request", proxyMode = ScopedProxyMode.TARGET_CLASS)
+@Scope(value = "request")
 public class WebDriverService {
     private final WebDriver driver;
     private static final Logger logger = LoggerFactory.getLogger(WebDriverService.class);

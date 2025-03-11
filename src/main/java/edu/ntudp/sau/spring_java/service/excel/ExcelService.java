@@ -1,6 +1,7 @@
 package edu.ntudp.sau.spring_java.service.excel;
 
-import edu.ntudp.sau.spring_java.model.dto.ProductDto;
+import edu.ntudp.sau.spring_java.model.dto.product.ProductParsingDto;
+import edu.ntudp.sau.spring_java.model.dto.product.ProductResponseDto;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFRichTextString;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -23,7 +24,7 @@ public class ExcelService implements ExcelReportGenerator {
     private CellStyle linkStyle;
 
     @Override
-    public byte[] generateSearchReport(String search, List<ProductDto> productDtos) {
+    public byte[] generateSearchReport(String search, List<ProductParsingDto> productParsingDtos) {
         Workbook workbook = new XSSFWorkbook();
 
         borderedStyle = createBorderedCellStyle(workbook);
@@ -49,12 +50,52 @@ public class ExcelService implements ExcelReportGenerator {
         createCell(headerRow, 3, "Stock", headerStyle);
         createCell(headerRow, 4, "Link", headerStyle);
 
-        for (int i = 0; i < productDtos.size(); i++) {
+        for (int i = 0; i < productParsingDtos.size(); i++) {
             Row dataRow = sheet.createRow(i + 4);
-            addProductData(workbook, dataRow, productDtos.get(i));
+            addProductData(workbook, dataRow, productParsingDtos.get(i));
         }
 
         for (int i = 0; i < 5; i++) {
+            sheet.autoSizeColumn(i);
+            int width = sheet.getColumnWidth(i);
+            sheet.setColumnWidth(i, width + 256);
+        }
+
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            workbook.write(outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @Override
+    public byte[] generateDatabaseReport(List<ProductResponseDto> productReposnseDtos) {
+        Workbook workbook = new XSSFWorkbook();
+
+        borderedStyle = createBorderedCellStyle(workbook);
+        headerStyle = createHeaderCellStyle(workbook);
+        linkStyle = createHyperlinkCellStyle(workbook);
+
+        Sheet sheet = workbook.createSheet("Product Report");
+
+        Row headerRow = sheet.createRow(0);
+        sheet.createFreezePane(0, 1);
+        createCell(headerRow, 0, "ID", headerStyle);
+        createCell(headerRow, 1, "Name", headerStyle);
+        createCell(headerRow, 2, "Price UAH", headerStyle);
+        createCell(headerRow, 3, "Price USD", headerStyle);
+        createCell(headerRow, 4, "Price EUR", headerStyle);
+        createCell(headerRow, 5, "Stock Status", headerStyle);
+        createCell(headerRow, 6, "Link", headerStyle);
+
+        for (int i = 0; i < productReposnseDtos.size(); i++) {
+            Row dataRow = sheet.createRow(i + 1);
+            addProductData(workbook, dataRow, productReposnseDtos.get(i));
+        }
+
+        for (int i = 0; i < 9; i++) {
             sheet.autoSizeColumn(i);
             int width = sheet.getColumnWidth(i);
             sheet.setColumnWidth(i, width + 256);
@@ -75,18 +116,34 @@ public class ExcelService implements ExcelReportGenerator {
         cell.setCellStyle(style);
     }
 
-    private void addProductData(Workbook workbook, Row row, ProductDto productDto) {
-        createCell(row, 0, String.valueOf(productDto.getId()), borderedStyle);
-        createCell(row, 1, productDto.getName(), borderedStyle);
-        createCell(row, 2, String.valueOf(productDto.getPrice()), borderedStyle);
-        createCell(row, 3, productDto.getStockStatus(), borderedStyle);
+    private void addProductData(Workbook workbook, Row row, ProductParsingDto productParsingDto) {
+        createCell(row, 0, String.valueOf(productParsingDto.getId()), borderedStyle);
+        createCell(row, 1, productParsingDto.getName(), borderedStyle);
+        createCell(row, 2, String.valueOf(productParsingDto.getPrice()), borderedStyle);
+        createCell(row, 3, productParsingDto.getStockStatus(), borderedStyle);
 
         Cell linkCell = row.createCell(4);
         Hyperlink hyperlink = workbook.getCreationHelper().createHyperlink(HyperlinkType.URL);
-        hyperlink.setAddress(productDto.getLink());
+        hyperlink.setAddress(productParsingDto.getLink());
 
         XSSFRichTextString richText = new XSSFRichTextString("Link");
         linkCell.setCellValue(richText);
+        linkCell.setHyperlink(hyperlink);
+        linkCell.setCellStyle(linkStyle);
+    }
+
+    private void addProductData(Workbook workbook, Row row, ProductResponseDto productResponseDto) {
+        createCell(row, 0, String.valueOf(productResponseDto.getId()), borderedStyle);
+        createCell(row, 1, productResponseDto.getName(), borderedStyle);
+        createCell(row, 2, String.valueOf(productResponseDto.getPriceUah()), borderedStyle);
+        createCell(row, 3, String.valueOf(productResponseDto.getPriceUsd()), borderedStyle);
+        createCell(row, 4, String.valueOf(productResponseDto.getPriceEur()), borderedStyle);
+        createCell(row, 5, productResponseDto.getStockStatus(), borderedStyle);
+
+        Cell linkCell = row.createCell(6);
+        Hyperlink hyperlink = workbook.getCreationHelper().createHyperlink(HyperlinkType.URL);
+        hyperlink.setAddress(productResponseDto.getLink());
+        linkCell.setCellValue("Link");
         linkCell.setHyperlink(hyperlink);
         linkCell.setCellStyle(linkStyle);
     }

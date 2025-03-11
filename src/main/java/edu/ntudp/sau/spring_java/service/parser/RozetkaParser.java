@@ -1,9 +1,7 @@
 package edu.ntudp.sau.spring_java.service.parser;
 
-import edu.ntudp.sau.spring_java.model.dto.ProductDto;
+import edu.ntudp.sau.spring_java.model.dto.product.ProductParsingDto;
 import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.Wait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,8 +20,7 @@ import org.springframework.context.annotation.Scope;
 
 @Service
 @Scope(value = "request", proxyMode = ScopedProxyMode.TARGET_CLASS)
-public class RozetkaParser {
-    private static final int RETRY_COUNT = 5;
+public class RozetkaParser implements Parser<ProductParsingDto> {
     private boolean isCategoryPage = false;
     private String urlTemplate = "https://rozetka.com.ua/ua/search/?text=%s";
 
@@ -36,7 +33,7 @@ public class RozetkaParser {
         this.driver = webDriverService.getDriver();
     }
 
-    public List<ProductDto> parseProducts(String search, int pageLimit) {
+    public List<ProductParsingDto> parseProducts(String search, int pageLimit) {
         try {
             search = search.trim().replaceAll(" ", "%20");
 
@@ -62,24 +59,24 @@ public class RozetkaParser {
 
             logger.info("Max page number: {}", maxPageNumber);
 
-            List<ProductDto> productDtos = parseProductsPage(getPageUrl(search, page));
+            List<ProductParsingDto> productParsingDtos = parseProductsPage(getPageUrl(search, page));
             logger.info("Finished page #{}", page);
 
             while (page < maxPageNumber) {
                 makeUrlTemplate(driver.getCurrentUrl());
                 page++;
 
-                List<ProductDto> parsedPageProductDtos = parseProductsPage(getPageUrl(search, page));
-                if (parsedPageProductDtos == null || parsedPageProductDtos.isEmpty()) {
+                List<ProductParsingDto> parsedPageProductParsingDtos = parseProductsPage(getPageUrl(search, page));
+                if (parsedPageProductParsingDtos == null || parsedPageProductParsingDtos.isEmpty()) {
                     logger.warn("No products found for page #{}", page);
                     continue;
                 }
 
-                productDtos.addAll(parsedPageProductDtos);
+                productParsingDtos.addAll(parsedPageProductParsingDtos);
                 logger.info("Finished page #{}", page);
             }
 
-            return productDtos;
+            return productParsingDtos;
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -87,7 +84,7 @@ public class RozetkaParser {
         return null;
     }
 
-    private List<ProductDto> parseProductsPage(String pageUrl) {
+    private List<ProductParsingDto> parseProductsPage(String pageUrl) {
         logger.info("Parsing page url: {}", pageUrl);
         driver.get(pageUrl);
 
@@ -95,41 +92,28 @@ public class RozetkaParser {
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
 
-        List<ProductDto> productDtos = driver.findElements(By.cssSelector("section.content_type_catalog .goods-tile"))
-                .stream()
-                .map(tile -> {
-                    try {
-                        long id = Long.parseLong(tile.findElement(By.className("g-id")).getAttribute("textContent"));
-                        String name = tile.findElement(By.cssSelector(".goods-tile__title")).getText();
-                        String link = tile.findElement(By.cssSelector(".goods-tile__content .product-link.goods-tile__heading a")).getAttribute("href");
+        List<ProductParsingDto> productParsingDtos = driver.findElements(By.cssSelector("section.content_type_catalog .goods-tile")).stream().map(tile -> {
+            try {
+                long id = Long.parseLong(tile.findElement(By.className("g-id")).getAttribute("textContent"));
+                String name = tile.findElement(By.cssSelector(".goods-tile__title")).getText();
+                String link = tile.findElement(By.cssSelector(".goods-tile__content .product-link.goods-tile__heading a")).getAttribute("href");
+                String priceText = tile.findElement(By.cssSelector(".goods-tile__price-value")).getText();
+                double price = Double.parseDouble(priceText.replaceAll("\\s", "").replace("₴", ""));
+                String stockStatus = tile.findElement(By.cssSelector(".goods-tile__availability")).getText();
+                return ProductParsingDto
+                        .builder()
+                        .id(id).name(name)
+                        .link(link)
+                        .price(price)
+                        .stockStatus(stockStatus)
+                        .build();
+            } catch (Exception e) {
+                logger.error("Could not parse product: {}", e.getMessage());
+                return null;
+            }
+        }).filter(Objects::nonNull).collect(Collectors.toList());
 
-
-                        String priceText = tile.findElement(By.cssSelector(".goods-tile__price-value")).getText();
-                        double price = Double.parseDouble(priceText.replaceAll("\\s", "").replace("₴", ""));
-
-                        String stockStatus = tile.findElements(By.cssSelector(".goods-tile__availability"))
-                                .stream()
-                                .findFirst()
-                                .map(WebElement::getText)
-                                .orElse("Unknown");
-
-                        return ProductDto
-                                .builder()
-                                .id(id)
-                                .name(name)
-                                .link(link)
-                                .price(price)
-                                .stockStatus(stockStatus)
-                                .build();
-                    } catch (Exception e) {
-                        logger.error("Could not parse product: {}", e.getMessage());
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-
-        return productDtos;
+        return productParsingDtos;
     }
 
     private int parseMaxPage(String url) {
@@ -137,7 +121,9 @@ public class RozetkaParser {
         JavascriptExecutor js = (JavascriptExecutor) driver;
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         wait.until(driver -> js.executeScript("return document.readyState").equals("complete"));
+
         List<WebElement> searchPaginationList = driver.findElements(By.className("pagination__item"));
+
         if (searchPaginationList != null && !searchPaginationList.isEmpty()) {
             return Integer.parseInt(searchPaginationList.getLast().getText());
         }
@@ -152,7 +138,6 @@ public class RozetkaParser {
     }
 
     private void makeUrlTemplate(String currentUrl) {
-        logger.info(currentUrl);
         if (currentUrl.contains("search") && urlTemplate.contains("search") && urlTemplate.contains("page=")) {
             return;
         }

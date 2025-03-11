@@ -1,8 +1,8 @@
 package edu.ntudp.sau.spring_java.controller;
 
-import edu.ntudp.sau.spring_java.model.dto.ProductDto;
-import edu.ntudp.sau.spring_java.model.entity.Product;
-import edu.ntudp.sau.spring_java.service.BankService;
+import edu.ntudp.sau.spring_java.model.dto.product.ProductParsingDto;
+import edu.ntudp.sau.spring_java.model.dto.product.ProductResponseDto;
+import edu.ntudp.sau.spring_java.service.CurrencyService;
 import edu.ntudp.sau.spring_java.service.ProductService;
 import edu.ntudp.sau.spring_java.service.parser.RozetkaParser;
 import edu.ntudp.sau.spring_java.service.excel.ExcelService;
@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 
 @Controller
@@ -30,51 +32,59 @@ public class ProductController {
     private ProductService productService;
 
     @Autowired
-    private BankService bankService;
+    private CurrencyService currencyService;
 
     @GetMapping
     public String parseProducts(@RequestParam(name = "search") String search,
                                 @RequestParam(name = "pageLimit", defaultValue = "1") int pageLimit,
                                 Model model) {
 
-        List<ProductDto> productDtos = rozetkaParser.parseProducts(search, pageLimit);
-        if (productDtos != null && !productDtos.isEmpty()) {
-            List<Product> savedProducts = productService.saveOrUpdateProducts(productDtos);
+        List<ProductParsingDto> productParsingDtos = rozetkaParser.parseProducts(search, pageLimit);
+        if (productParsingDtos != null && !productParsingDtos.isEmpty()) {
+            List<ProductResponseDto> savedProducts = productService.saveProducts(productParsingDtos);
 
             model.addAttribute("products", savedProducts);
         } else {
-            model.addAttribute("error", "No products found.");
+            model.addAttribute("error", "Something went wrong!");
         }
 
         return "products";
     }
 
     @GetMapping("/excel")
-    public ResponseEntity<byte[]> generateExcelReport(@RequestParam(name = "search") String search,
+    public ResponseEntity<byte[]> generateSearchExcelReport(@RequestParam(name = "search") String search,
                                                       @RequestParam(name = "pageLimit", defaultValue = "1") int pageLimit) {
 
-        List<ProductDto> productDtos = rozetkaParser.parseProducts(search, pageLimit);
+        List<ProductParsingDto> productParsingDtos = rozetkaParser.parseProducts(search, pageLimit);
 
-        if (productDtos == null || productDtos.isEmpty()) {
+        if (productParsingDtos == null || productParsingDtos.isEmpty()) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
-        byte[] excelFile = excelService.generateSearchReport(search, productDtos);
+        byte[] excelFile = excelService.generateSearchReport(search, productParsingDtos);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-        headers.setContentDisposition(ContentDisposition.builder("attachment").filename("products_report.xlsx").build());
+        headers.setContentDisposition(ContentDisposition.builder("attachment").filename("products_report_" + new Date().getTime() + ".xlsx").build());
 
         return new ResponseEntity<>(excelFile, headers, HttpStatus.OK);
     }
 
-    @GetMapping("/test-api")
-    public String parseProducts() {
+    @GetMapping("/excel/db")
+    public ResponseEntity<byte[]> generateDatabaseExcelReport() {
 
-        bankService.getCurrencyRate().subscribe(rates -> {
-            rates.forEach(rate -> System.out.println(rate.toString()));
-        });
+        List<ProductResponseDto> productResponseDtos = productService.getAllProducts();
 
-        return "products";
+        if (productResponseDtos == null || productResponseDtos.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+
+        byte[] excelFile = excelService.generateDatabaseReport(productResponseDtos);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentDisposition(ContentDisposition.builder("attachment").filename("products_report_" + new Date().getTime() + ".xlsx").build());
+
+        return new ResponseEntity<>(excelFile, headers, HttpStatus.OK);
     }
 }

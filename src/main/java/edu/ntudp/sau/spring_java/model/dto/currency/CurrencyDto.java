@@ -1,9 +1,7 @@
-package edu.ntudp.sau.spring_java.model.dto;
+package edu.ntudp.sau.spring_java.model.dto.currency;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
 
 @Data
 public class CurrencyDto {

@@ -5,10 +5,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
-public class BankWebClientConfig {
+public class CurrencyWebClientConfig {
 
     @Bean
-    public WebClient bankWebClient(WebClient.Builder builder) {
+    public WebClient currencyWebClient(WebClient.Builder builder) {
         return builder
                 .baseUrl("https://api.privatbank.ua/p24api")
                 .build();

@@ -10,7 +10,8 @@
     <div class="container">
         <div class="row mb-3">
             <a class="text-center" href="https://rozetka.com.ua/ua/" target="_blank">
-                <img class="img-thumbnail w-50" src="https://cdn.brandfetch.io/idBE_CMNs6/theme/light/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B" alt="logo">
+                <img class="img-thumbnail w-50"
+                     src="https://cdn.brandfetch.io/idBE_CMNs6/theme/light/logo.svg?c=1dxbfHSJFAPEGdCLU4o5B" alt="logo">
             </a>
         </div>
         <div class="row mb-3">
@@ -20,29 +21,38 @@
             <form id="excelForm" class="col-6">
                 <div class="mb-3">
                     <label for="searchInput" class="form-label">Search</label>
-                    <input type="search" name="search" class="form-control" id="searchInput" aria-describedby="searchHelp" required>
+                    <input type="search" name="search" class="form-control" id="searchInput"
+                           aria-describedby="searchHelp" required>
                     <div id="searchHelp" class="form-text">Please be specific.</div>
                 </div>
                 <div class="mb-3">
                     <label for="pageLimit" class="form-label">Pages limit</label>
-                    <input type="number" name="pageLimit" class="form-control" id="pageLimit" aria-describedby="searchHelp" min="1" value="1" required>
+                    <input type="number" name="pageLimit" class="form-control" id="pageLimit"
+                           aria-describedby="searchHelp" min="1" value="1" required>
                 </div>
-                <button id="productListLink" type="submit" class="btn btn-primary">Fetch products</button>
-                <button id="reportButton" type="submit" class="btn btn-success">Download Excel</button>
+                <button id="productListLink" type="button" class="btn btn-primary">Fetch products</button>
+                <button id="reportButton" type="button" class="btn btn-success">Download Excel</button>
+                <button id="reportDbButton" type="button" class="btn btn-success">Download Excel from Database</button>
             </form>
         </div>
-        <div class="row text-danger mt-3" id="error" style="display: none; text-align: center;">
-            <h4>Parsing failed. Try again, please be more specific.</h4>
+        <div id="error" class="col-6 alert alert-danger mx-auto mt-3" role="alert"  style="display: none; text-align: center;">
+            Failed generating report!
         </div>
     </div>
 </section>
 
-<!-- Preloader -->
-<div id="preloader" style="display: none; text-align: center; padding: 10px;">
+<div id="reportPreloader" style="display: none; text-align: center; padding: 10px;">
     <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Loading...</span>
     </div>
     <p>Generating report...</p>
+</div>
+
+<div id="fetchLoader" style="display: none; text-align: center; padding: 10px;">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <p>Parsing products...</p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
@@ -53,9 +63,9 @@
         crossorigin="anonymous"></script>
 
 <script>
-    document.getElementById("excelForm").addEventListener("submit", function(event) {
+    document.getElementById("reportButton").addEventListener("click", function (event) {
         event.preventDefault();
-        showPreloader();
+        document.getElementById("reportPreloader").style.display = "block";
         document.getElementById("error").style.display = "none";
         document.getElementById("reportButton").setAttribute("disabled", true);
 
@@ -70,7 +80,7 @@
             .then(response => {
                 if (!response.ok) {
                     return response.text().then(errMsg => {
-                        document.getElementById("preloader").style.display = "none";
+                        document.getElementById("reportPreloader").style.display = "none";
                         document.getElementById("error").style.display = "block";
                         throw new Error(errMsg || `Server responded with ${response.status} - ${response.statusText}`);
                     });
@@ -88,16 +98,51 @@
             })
             .finally(() => {
                 document.getElementById("reportButton").removeAttribute("disabled");
-                document.getElementById("preloader").style.display = "none";
+                document.getElementById("reportPreloader").style.display = "none";
             });
     });
 
-    function showPreloader() {
-        document.getElementById("preloader").style.display = "block";
-    }
-
-    document.getElementById("productListLink").addEventListener("click", function(event) {
+    document.getElementById("reportDbButton").addEventListener("click", function (event) {
         event.preventDefault();
+        document.getElementById("reportPreloader").style.display = "block";
+        document.getElementById("error").style.display = "none";
+        document.getElementById("reportDbButton").setAttribute("disabled", true);
+
+        fetch('/product/excel/db?', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(errMsg => {
+                        document.getElementById("reportPreloader").style.display = "none";
+                        document.getElementById("error").style.display = "block";
+                        throw new Error(errMsg || `Server responded with ${response.status} - ${response.statusText}`);
+                    });
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = "products_report_" + Date.now() + ".xlsx";
+                link.click();
+            })
+            .catch(error => {
+                console.error("Error downloading the file:", error);
+            })
+            .finally(() => {
+                document.getElementById("reportDbButton").removeAttribute("disabled");
+                document.getElementById("reportPreloader").style.display = "none";
+            });
+    });
+
+    document.getElementById("productListLink").addEventListener("click", function (event) {
+        event.preventDefault();
+        document.getElementById("productListLink").setAttribute("disabled", true);
+        document.getElementById("fetchLoader").style.display = "block"
 
         var search = document.getElementById("searchInput").value;
         var pageLimit = document.getElementById("pageLimit").value;

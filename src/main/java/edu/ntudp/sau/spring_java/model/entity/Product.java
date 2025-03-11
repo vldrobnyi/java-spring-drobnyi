@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.Set;
 
 @Entity
@@ -23,6 +24,6 @@ public class Product {
     private double priceEur;
     private String stockStatus;
     private String link;
-    private LocalDateTime additionDateTime;
-    private LocalDateTime lastUpdateDateTime;
+    private Date creationDate;
+    private Date lastUpdateDate;
 }
